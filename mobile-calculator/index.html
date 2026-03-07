@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Mobile Calculator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .phone {
+      width: 375px;
+      height: 780px;
+      background: #1a1a2e;
+      border-radius: 50px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 0 2px #2e2e4e;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .notch {
+      width: 120px;
+      height: 28px;
+      background: #0f0f1a;
+      border-radius: 0 0 20px 20px;
+      margin: 0 auto;
+      flex-shrink: 0;
+    }
+
+    .display {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      padding: 0 28px 20px;
+    }
+
+    .expression {
+      color: #6c6c8a;
+      font-size: 20px;
+      font-weight: 300;
+      min-height: 28px;
+      margin-bottom: 4px;
+    }
+
+    .result {
+      color: #fff;
+      font-size: 72px;
+      font-weight: 200;
+      letter-spacing: -3px;
+      transition: font-size 0.1s;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .buttons {
+      padding: 0 14px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      font-size: 26px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: opacity 0.1s, transform 0.08s;
+      outline: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    button:active {
+      opacity: 0.75;
+      transform: scale(0.94);
+    }
+
+    .btn-number { background: #2d2d44; color: #fff; }
+    .btn-top    { background: #3d3d5c; color: #c8c8ff; }
+    .btn-op     { background: #6c63ff; color: #fff; }
+    .btn-op.active { background: #fff; color: #6c63ff; }
+
+    .btn-zero {
+      width: 156px;
+      border-radius: 36px;
+      text-align: left;
+      padding-left: 26px;
+    }
+  </style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="display">
+    <div class="expression" id="expression"></div>
+    <div class="result" id="result">0</div>
+  </div>
+  <div class="buttons">
+    <div class="row">
+      <button class="btn-top" onclick="press('AC')">AC</button>
+      <button class="btn-top" onclick="press('+/-')">+/-</button>
+      <button class="btn-top" onclick="press('%')">%</button>
+      <button class="btn-op"  onclick="press('÷')" id="op-÷">÷</button>
+    </div>
+    <div class="row">
+      <button class="btn-number" onclick="press('7')">7</button>
+      <button class="btn-number" onclick="press('8')">8</button>
+      <button class="btn-number" onclick="press('9')">9</button>
+      <button class="btn-op"     onclick="press('×')" id="op-×">×</button>
+    </div>
+    <div class="row">
+      <button class="btn-number" onclick="press('4')">4</button>
+      <button class="btn-number" onclick="press('5')">5</button>
+      <button class="btn-number" onclick="press('6')">6</button>
+      <button class="btn-op"     onclick="press('−')" id="op-−">−</button>
+    </div>
+    <div class="row">
+      <button class="btn-number" onclick="press('1')">1</button>
+      <button class="btn-number" onclick="press('2')">2</button>
+      <button class="btn-number" onclick="press('3')">3</button>
+      <button class="btn-op"     onclick="press('+')" id="op-+">+</button>
+    </div>
+    <div class="row">
+      <button class="btn-number btn-zero" onclick="press('0')">0</button>
+      <button class="btn-number" onclick="press('.')">.</button>
+      <button class="btn-op"     onclick="press('=')">＝</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const OPS = ['÷','×','−','+'];
+  let display = '0';
+  let expression = '';
+  let operator = null;
+  let prevValue = null;
+  let waitingForOperand = false;
+  let hasResult = false;
+
+  function fmt(n) {
+    const s = String(n);
+    if (s.length > 9) {
+      const p = parseFloat(n);
+      if (Math.abs(p) >= 1e9 || (Math.abs(p) < 1e-4 && p !== 0))
+        return p.toExponential(3);
+      return parseFloat(p.toPrecision(9)).toString();
+    }
+    return s;
+  }
+
+  function calc(a, b, op) {
+    if (op === '÷') return b === 0 ? 'Error' : a / b;
+    if (op === '×') return a * b;
+    if (op === '−') return a - b;
+    if (op === '+') return a + b;
+    return b;
+  }
+
+  function press(btn) {
+    if (btn === 'AC') {
+      display = '0'; expression = ''; operator = null;
+      prevValue = null; waitingForOperand = false; hasResult = false;
+    } else if (btn === '+/-') {
+      display = fmt(-parseFloat(display));
+    } else if (btn === '%') {
+      display = fmt(parseFloat(display) / 100);
+    } else if (OPS.includes(btn)) {
+      const cur = parseFloat(display);
+      if (prevValue !== null && !waitingForOperand) {
+        const r = calc(prevValue, cur, operator);
+        display = fmt(r); prevValue = r;
+      } else {
+        prevValue = cur;
+      }
+      expression = `${display} ${btn}`;
+      operator = btn; waitingForOperand = true; hasResult = false;
+    } else if (btn === '=') {
+      if (prevValue === null || waitingForOperand) return;
+      const r = calc(prevValue, parseFloat(display), operator);
+      display = r === 'Error' ? 'Error' : fmt(r);
+      expression = ''; prevValue = null; operator = null;
+      waitingForOperand = false; hasResult = true;
+    } else {
+      // digit or dot
+      if (waitingForOperand) {
+        display = btn === '.' ? '0.' : btn;
+        waitingForOperand = false; hasResult = false;
+      } else if (hasResult) {
+        display = btn === '.' ? '0.' : btn;
+        expression = ''; prevValue = null; operator = null; hasResult = false;
+      } else {
+        if (btn === '.' && display.includes('.')) return;
+        display = (display === '0' && btn !== '.') ? btn
+                  : display.length < 9 ? display + btn : display;
+      }
+    }
+    render();
+  }
+
+  function render() {
+    const el = document.getElementById('result');
+    el.textContent = display;
+    el.style.fontSize = display.length > 9 ? '36px'
+                      : display.length > 7 ? '48px'
+                      : display.length > 5 ? '60px' : '72px';
+    document.getElementById('expression').textContent = expression;
+
+    OPS.forEach(op => {
+      const btn = document.getElementById(`op-${op}`);
+      if (btn) btn.classList.toggle('active', operator === op && waitingForOperand);
+    });
+  }
+</script>
+</body>
+</html>
