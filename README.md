@@ -6,4 +6,4 @@ A collection of fun projects built exclusively with Claude. Each project lives i
 
 | Folder | Description |
 |--------|-------------|
-| *(more coming soon)* | |
+| [mobile-calculator](./mobile-calculator) | A sleek mobile calculator app built with React Native & Expo |
