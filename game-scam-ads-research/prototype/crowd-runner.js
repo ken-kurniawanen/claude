@@ -397,15 +397,319 @@ function createCrowdRunner(canvas, ctx) {
         updateFX();
     }
 
-    // === PLACEHOLDER: draw functions added in chunk 3 ===
+    // =====================
+    // DRAW FUNCTIONS
+    // =====================
 
-    function draw() {
-        ctx.fillStyle = '#222';
+    function drawGatePhase() {
+        // Sky
+        const gradient = ctx.createLinearGradient(0, 0, 0, H);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(1, '#b8d4b8');
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, W, H);
+
+        // Grass
+        ctx.fillStyle = '#6aaa6a';
+        ctx.fillRect(0, 0, roadX, H);
+        ctx.fillRect(roadX + roadWidth, 0, W - roadX - roadWidth, H);
+
+        // Road
+        ctx.fillStyle = '#777';
+        ctx.fillRect(roadX, 0, roadWidth, H);
+
+        // Dashed center line
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([20, 20]);
+        ctx.lineDashOffset = -((distance * 2) % 40);
+        ctx.beginPath();
+        ctx.moveTo(roadX + roadWidth / 2, 0);
+        ctx.lineTo(roadX + roadWidth / 2, H);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Road edges
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(roadX, 0); ctx.lineTo(roadX, H);
+        ctx.moveTo(roadX + roadWidth, 0); ctx.lineTo(roadX + roadWidth, H);
+        ctx.stroke();
+
+        // Scenery
+        scenery.forEach(s => {
+            const sy = s.y + distance + H * 0.6;
+            if (sy < -50 || sy > H + 50) return;
+            if (s.type === 'tree') {
+                ctx.fillStyle = '#5a8a5a';
+                ctx.beginPath(); ctx.arc(s.x, sy - 15, 14, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(s.x - 3, sy - 5, 6, 15);
+            } else {
+                ctx.fillStyle = '#888';
+                ctx.fillRect(s.x - 2, sy - 25, 4, 30);
+                ctx.fillStyle = '#ffdd44';
+                ctx.beginPath(); ctx.arc(s.x, sy - 26, 5, 0, Math.PI * 2); ctx.fill();
+            }
+        });
+
+        // Gates
+        for (const gate of gates) {
+            const gy = gate.y + distance + H * 0.6;
+            if (gy < -80 || gy > H + 80 || gate.passed) continue;
+
+            const gateH = 60;
+            const halfW = laneWidth;
+
+            // Left gate
+            const leftIsGood = typeof gate.leftValue === 'string' || gate.leftValue > 0;
+            ctx.fillStyle = leftIsGood ? 'rgba(46, 204, 113, 0.85)' : 'rgba(231, 76, 60, 0.85)';
+            ctx.fillRect(roadX, gy - gateH / 2, halfW, gateH);
+            ctx.strokeStyle = leftIsGood ? '#27ae60' : '#c0392b';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(roadX, gy - gateH / 2, halfW, gateH);
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 28px sans-serif';
+            ctx.textAlign = 'center';
+            const leftText = typeof gate.leftValue === 'string' ? gate.leftValue :
+                (gate.leftValue > 0 ? '+' + gate.leftValue : '' + gate.leftValue);
+            ctx.fillText(leftText, roadX + halfW / 2, gy + 10);
+
+            // Right gate
+            const rightIsGood = typeof gate.rightValue === 'string' || gate.rightValue > 0;
+            ctx.fillStyle = rightIsGood ? 'rgba(46, 204, 113, 0.85)' : 'rgba(231, 76, 60, 0.85)';
+            ctx.fillRect(roadX + halfW, gy - gateH / 2, halfW, gateH);
+            ctx.strokeStyle = rightIsGood ? '#27ae60' : '#c0392b';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(roadX + halfW, gy - gateH / 2, halfW, gateH);
+
+            ctx.fillStyle = '#fff';
+            const rightText = typeof gate.rightValue === 'string' ? gate.rightValue :
+                (gate.rightValue > 0 ? '+' + gate.rightValue : '' + gate.rightValue);
+            ctx.fillText(rightText, roadX + halfW + halfW / 2, gy + 10);
+
+            // Divider
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(roadX + halfW - 2, gy - gateH / 2, 4, gateH);
+        }
+
+        // Draw army
+        drawArmy(armyX, H * 0.65);
+
+        // HUD
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level ' + level + ' - Gate Run', W / 2, 40);
+
+        // Progress bar
+        const progW = W * 0.6;
+        const progX = (W - progW) / 2;
+        const progress = Math.min(totalDistance / levelLength, 1);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(progX, 52, progW, 10);
+        ctx.fillStyle = '#4ecdc4';
+        ctx.fillRect(progX, 52, progW * progress, 10);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        ctx.strokeRect(progX, 52, progW, 10);
+
+        if (totalDistance < 200) {
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = '16px sans-serif';
+            ctx.fillText('Drag left/right to choose gates', W / 2, H * 0.45);
+        }
+    }
+
+    function drawBattlePhase() {
+        ctx.save();
+        ctx.translate(shakeX, shakeY);
+
+        // Background
+        ctx.fillStyle = '#3a3a5c';
+        ctx.fillRect(0, 0, W, H);
+
+        // Ground
+        const groundY = H * 0.6;
+        ctx.fillStyle = '#4a4a6a';
+        ctx.fillRect(0, groundY, W, H - groundY);
+
+        // Grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < W; x += 40) {
+            ctx.beginPath(); ctx.moveTo(x, groundY); ctx.lineTo(x, H); ctx.stroke();
+        }
+        for (let y = groundY; y < H; y += 40) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        }
+
+        // Enemies
+        enemies.forEach(e => {
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(e.x, e.y + e.size, e.size * 0.8, e.size * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (e.type === 'big') {
+                ctx.fillStyle = '#8b0000';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ff2222';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 0.7, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(e.x - 5, e.y - 4, 4, 4);
+                ctx.fillRect(e.x + 1, e.y - 4, 4, 4);
+                ctx.fillStyle = '#f00';
+                ctx.fillRect(e.x - 4, e.y - 3, 2, 2);
+                ctx.fillRect(e.x + 2, e.y - 3, 2, 2);
+            } else {
+                ctx.fillStyle = '#4a6a4a';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#5a7a5a';
+                ctx.beginPath(); ctx.arc(e.x, e.y - 4, e.size * 0.6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#ff0';
+                ctx.fillRect(e.x - 4, e.y - 6, 3, 2);
+                ctx.fillRect(e.x + 1, e.y - 6, 3, 2);
+            }
+
+            // HP bar
+            if (e.hp < e.maxHp) {
+                const barW = e.size * 2;
+                const barX = e.x - barW / 2;
+                const barY = e.y - e.size - 8;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(barX, barY, barW, 3);
+                ctx.fillStyle = e.hp / e.maxHp > 0.5 ? '#4caf50' : '#f44336';
+                ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), 3);
+            }
+        });
+
+        // Bullets
+        bullets.forEach(b => {
+            ctx.fillStyle = '#ffdd44';
+            ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ff8800';
+            ctx.beginPath(); ctx.arc(b.x - b.vx * 0.3, b.y - b.vy * 0.3, 3, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // Army at bottom
+        drawArmy(W / 2, H * 0.75);
+
+        // HUD
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level ' + level + ' - BATTLE', W / 2, 40);
+
+        ctx.fillStyle = '#ff6666';
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(enemies.length.toString(), 20, 50);
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#ffaaaa';
+        ctx.fillText('enemies left', 22, 67);
+
+        ctx.restore();
+    }
+
+    function drawArmy(cx, cy) {
+        const time = Date.now() / 1000;
+        armyUnits.forEach(unit => {
+            const bobY = Math.sin(time * 4 + unit.bobPhase) * 2;
+            const ux = cx + unit.offsetX;
+            const uy = cy + unit.offsetY + bobY;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath(); ctx.ellipse(ux, uy + 8, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = unit.color;
+            ctx.beginPath(); ctx.arc(ux, uy, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffe0bd';
+            ctx.beginPath(); ctx.arc(ux, uy - 5, 4, 0, Math.PI * 2); ctx.fill();
+        });
+
+        // Count
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.strokeText(Math.round(armyDisplayCount).toString(), cx, cy - 25);
+        ctx.fillText(Math.round(armyDisplayCount).toString(), cx, cy - 25);
+    }
+
+    function drawFX() {
+        particles.forEach(p => {
+            ctx.globalAlpha = p.life / p.maxLife;
+            ctx.fillStyle = p.color;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (p.life / p.maxLife), 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        floatingNumbers.forEach(f => {
+            ctx.globalAlpha = f.life / 50;
+            ctx.fillStyle = f.color;
+            ctx.font = 'bold 28px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(f.text, f.x, f.y);
+        });
+        ctx.globalAlpha = 1;
+    }
+
+    function drawTransition() {
+        // Fade from gate bg to battle bg
+        const t = 1 - transitionTimer / 90;
+        ctx.fillStyle = `rgb(${Math.round(135 - 77 * t)}, ${Math.round(206 - 148 * t)}, ${Math.round(235 - 143 * t)})`;
+        ctx.fillRect(0, 0, W, H);
+
+        drawArmy(W / 2, H * 0.6);
+
+        ctx.fillStyle = '#ffa500';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PREPARE FOR BATTLE!', W / 2, H * 0.35);
         ctx.fillStyle = '#fff';
         ctx.font = '20px sans-serif';
+        ctx.fillText('Army: ' + armyCount + ' soldiers', W / 2, H * 0.42);
+    }
+
+    function drawResult() {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, W, H);
+
+        if (phase === 'won') {
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 48px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('LEVEL CLEAR!', W / 2, H / 2 - 40);
+            ctx.fillStyle = '#fff';
+            ctx.font = '22px sans-serif';
+            ctx.fillText('Survivors: ' + armyCount + ' soldiers', W / 2, H / 2 + 10);
+            ctx.fillText('Enemies defeated: ' + enemiesDefeated, W / 2, H / 2 + 40);
+        } else {
+            ctx.fillStyle = '#ff4444';
+            ctx.font = 'bold 48px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('DEFEATED', W / 2, H / 2 - 30);
+            ctx.fillStyle = '#fff';
+            ctx.font = '20px sans-serif';
+            ctx.fillText('Your army was wiped out', W / 2, H / 2 + 20);
+        }
+
+        ctx.fillStyle = '#aaa';
+        ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Loading...', W / 2, H / 2);
+        ctx.fillText('Tap to ' + (phase === 'won' ? 'continue' : 'retry'), W / 2, H / 2 + 80);
+    }
+
+    function draw() {
+        if (phase === 'gate') drawGatePhase();
+        else if (phase === 'transition') drawTransition();
+        else if (phase === 'battle') drawBattlePhase();
+
+        drawFX();
+
+        if (phase === 'won' || phase === 'lost') drawResult();
     }
 
     return {
