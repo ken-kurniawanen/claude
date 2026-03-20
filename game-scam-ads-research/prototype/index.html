@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Mobile Game Prototypes</title>
+    <title>Crowd Runner - Scam Ad Game Prototype</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -22,10 +22,11 @@
             justify-content: center;
             height: 100vh;
             gap: 20px;
+            padding: 20px;
         }
         #menu h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
+            font-size: 32px;
+            margin-bottom: 5px;
             text-align: center;
             background: linear-gradient(135deg, #ff6b6b, #ffa500, #4ecdc4);
             -webkit-background-clip: text;
@@ -34,33 +35,37 @@
         #menu p {
             color: #888;
             font-size: 14px;
-            margin-bottom: 20px;
+            text-align: center;
+            max-width: 320px;
+            line-height: 1.5;
         }
-        .menu-btn {
+        .play-btn {
             width: 280px;
-            padding: 20px;
+            padding: 22px;
             border: none;
             border-radius: 16px;
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 700;
             cursor: pointer;
             transition: transform 0.15s;
-            text-align: left;
-        }
-        .menu-btn:active { transform: scale(0.95); }
-        .menu-btn .subtitle {
-            font-size: 12px;
-            font-weight: 400;
-            opacity: 0.8;
-            margin-top: 4px;
-        }
-        #btn-horde {
             background: linear-gradient(135deg, #e74c3c, #c0392b);
             color: #fff;
+            margin-top: 20px;
         }
-        #btn-gate {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: #fff;
+        .play-btn:active { transform: scale(0.95); }
+        .play-btn .subtitle {
+            font-size: 13px;
+            font-weight: 400;
+            opacity: 0.8;
+            margin-top: 6px;
+        }
+        .info {
+            color: #555;
+            font-size: 11px;
+            text-align: center;
+            max-width: 280px;
+            line-height: 1.4;
+            margin-top: 10px;
         }
         canvas {
             display: block;
@@ -85,22 +90,18 @@
 </head>
 <body>
     <div id="menu">
-        <h1>Game Ad Prototypes</h1>
-        <p>The games from the "scam" ads</p>
-        <button class="menu-btn" id="btn-horde">
-            Horde Shooter
-            <div class="subtitle">Shoot waves of enemies marching toward you</div>
+        <h1>Crowd Runner</h1>
+        <p>A prototype of the classic mobile game scam ad. Run through gates to grow your army, then battle the horde!</p>
+        <button class="play-btn" id="btn-play">
+            PLAY
+            <div class="subtitle">Gates + Battle in one run</div>
         </button>
-        <button class="menu-btn" id="btn-gate">
-            Number Gate Runner
-            <div class="subtitle">Run your army through +/- gates to grow</div>
-        </button>
+        <div class="info">Based on Last War / Last Z style misleading mobile game ads</div>
     </div>
     <button id="back-btn">&larr;</button>
     <canvas id="gameCanvas"></canvas>
 
-    <script src="horde-shooter.js"></script>
-    <script src="gate-runner.js"></script>
+    <script src="crowd-runner.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -119,18 +120,19 @@
 
         function showMenu() {
             if (animFrameId) cancelAnimationFrame(animFrameId);
+            if (currentGame && currentGame.cleanup) currentGame.cleanup();
             currentGame = null;
             menu.style.display = 'flex';
             canvas.style.display = 'none';
             backBtn.style.display = 'none';
         }
 
-        function startGame(gameFactory) {
+        function startGame() {
             menu.style.display = 'none';
             canvas.style.display = 'block';
             backBtn.style.display = 'block';
             resizeCanvas();
-            currentGame = gameFactory(canvas, ctx);
+            currentGame = createCrowdRunner(canvas, ctx);
             gameLoop();
         }
 
@@ -141,8 +143,7 @@
             animFrameId = requestAnimationFrame(gameLoop);
         }
 
-        document.getElementById('btn-horde').addEventListener('click', () => startGame(createHordeShooter));
-        document.getElementById('btn-gate').addEventListener('click', () => startGame(createGateRunner));
+        document.getElementById('btn-play').addEventListener('click', startGame);
         backBtn.addEventListener('click', showMenu);
 
         showMenu();

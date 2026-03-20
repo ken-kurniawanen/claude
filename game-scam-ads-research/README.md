@@ -74,6 +74,15 @@ The demand created by fake ads led to actual games being developed that match th
 
 The fake ads inadvertently created a real game genre.
 
+## Playable Prototype
+
+The [`prototype/`](./prototype/) folder contains **Crowd Runner** — a single playable game that recreates the classic scam ad gameplay loop:
+
+1. **Gate Run Phase**: Swipe left/right to guide your army through +/- gates, growing (or shrinking) your crowd
+2. **Battle Phase**: Your army auto-fights a horde of enemies. More soldiers = more firepower
+
+Open `prototype/index.html` in a browser to play. Works on desktop and mobile.
+
 ## Sources
 
 - [Sherwood News - Why are mobile game ads so weird and bad?](https://sherwood.news/business/mobile-game-ads-industry-fake-misleading/)
