@@ -6,4 +6,4 @@ A collection of fun projects built exclusively with Claude. Each project lives i
 
 | Folder | Description |
 |--------|-------------|
-| *(more coming soon)* | |
+| [game-scam-ads-research](./game-scam-ads-research) | Research into misleading mobile game advertisements and scam ads |
